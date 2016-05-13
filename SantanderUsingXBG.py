@@ -20,41 +20,42 @@ from sklearn.preprocessing import normalize
 from sklearn.feature_selection import SelectFromModel
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import ExtraTreesClassifier
-#from sklearn.preprocessing import PCA
-#from sklearn.cross_validation import train_test_split
+
 
 
  
 path = 'C:/Data Science and ML/Kaggle Santander/'
   
 df_data = pd.read_csv(path+'train.csv', sep=',', header=0)
-X_train, y_train, feat_ix_keep, pca, features = IFS.final_feats(df_data)
+X_train, y_train, feat_ix_keep, pca, del_constants, del_identicals = IFS.final_feats(df_data)
+   
 
-maxValues = []
-
-for col in X_train.axes[1]:
-    maxValues.append(max(col))
-    
-
-#preprocessing of test data using features obtained from preprocessing
-#of training data
+"""preprocessing of test data using features obtained from preprocessing
+of training data"""
 test_data =  pd.read_csv(path+'test.csv', sep=',', header=0)
-orig_feat_ix = np.arange(test_data.columns.size)
-feat_ix_delete = np.delete(orig_feat_ix, feat_ix_keep)
+x_test = test_data.iloc[:,1:369]
 
-X_test = test_data.drop(labels=test_data.columns[feat_ix_delete],
+"""Finding the first 2 PCs"""
+x_test_projected = pca.fit_transform(normalize(x_test, axis=0))
+
+"""Removing features with little variance, identical features and those deemed redundant by the 
+L-1 regularized SVC"""
+x_test = x_test.drop(labels=x_test.columns[del_constants],
                                  axis=1)
-x_test_projected = pca.transform(normalize(test_data[features], axis=0))
+x_test = x_test.drop(labels=del_identicals, axis=1)
+orig_feat_ix = np.arange(x_test.columns.size)
+feat_ix_delete = np.delete(orig_feat_ix, feat_ix_keep)
+X_test = x_test.drop(labels=x_test.columns[feat_ix_delete],
+                                 axis=1)
 
+"""Inserting the 2 PCs found above"""
 X_test.insert(1, 'PCAOne', x_test_projected[:, 0])
 X_test.insert(1, 'PCATwo', x_test_projected[:, 1])                                 
 
 #Further feature selection using ExtraTreeClassifier
 clf = ExtraTreesClassifier(random_state=1729,bootstrap =True,class_weight = "balanced")
 selector = clf.fit(normalize(X_train), y_train)
-# clf.feature_importances_
 fs = SelectFromModel(selector, prefit=True)
-
 X_train = fs.transform(X_train)
 X_test = fs.transform(X_test)
 

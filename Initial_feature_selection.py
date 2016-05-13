@@ -26,30 +26,30 @@ from sklearn.decomposition import PCA
 
 
 
-def principal_component_analysis(x_train):
-
-    """
-    Principal Component Analysis (PCA) identifies the combination
-    of attributes (principal components, or directions in the feature space)
-    that account for the most variance in the data.
-
-    Let's calculate the 2 first principal components of the training data,
-    and then create a scatter plot visualizing the training data examples
-    projected on the calculated components.
-    """
-
-    # Extract the variable to be predicted
-    y_train = x_train["TARGET"]
-    x_train = x_train.drop(labels="TARGET", axis=1)
-    classes = np.sort(np.unique(y_train))
-    labels = ["Satisfied customer", "Unsatisfied customer"]
-
-    # Normalize each feature to unit norm (vector length)
-    x_train_normalized = normalize(x_train, axis=0)
-    
-    # Run PCA
-    pca = PCA(n_components=2)
-    x_train_projected = pca.fit_transform(x_train_normalized)
+#def principal_component_analysis(x_train):
+#
+#    """
+#    Principal Component Analysis (PCA) identifies the combination
+#    of attributes (principal components, or directions in the feature space)
+#    that account for the most variance in the data.
+#
+#    Let's calculate the 2 first principal components of the training data,
+#    and then create a scatter plot visualizing the training data examples
+#    projected on the calculated components.
+#    """
+#
+#    # Extract the variable to be predicted
+#    y_train = x_train["TARGET"]
+#    x_train = x_train.drop(labels="TARGET", axis=1)
+#    classes = np.sort(np.unique(y_train))
+#    labels = ["Satisfied customer", "Unsatisfied customer"]
+#
+#    # Normalize each feature to unit norm (vector length)
+#    x_train_normalized = normalize(x_train, axis=0)
+#    
+#    # Run PCA
+#    pca = PCA(n_components=2)
+#    x_train_projected = pca.fit_transform(x_train_normalized)
 
 
 def remove_feat_constants(data_frame):
@@ -77,7 +77,7 @@ def remove_feat_constants(data_frame):
     print("  - Deleted %s / %s features (~= %.1f %%)" % (
         n_features_deleted, n_features_originally,
         100.0 * (np.float(n_features_deleted) / n_features_originally)))
-    return data_frame
+    return data_frame, feat_ix_delete
 
 
 def remove_feat_identicals(data_frame):
@@ -100,25 +100,23 @@ def remove_feat_identicals(data_frame):
     print("  - Deleted %s / %s features (~= %.1f %%)" % (
         n_features_deleted, n_features_originally,
         100.0 * (np.float(n_features_deleted) / n_features_originally)))
-    return data_frame
+    return data_frame, feat_names_delete
 
 def final_feats(df_data):
-    x_train = df_data.iloc[:,2:370] #removing the "ID" and the "Target" columns
-    train = x_train
-    features = train.columns[1:-1]
+    x_train = df_data.iloc[:,1:370] #removing the "ID" and the "Target" columns
 
-    x_train = remove_feat_constants(x_train) # removing columns with no 
-#variance; in our case the all-zero columns
-
-    x_train = remove_feat_identicals(x_train)
-# removing columns that are identical to each other, and retainining
-#only one of them
-    pca = PCA(n_components=2)
-    x_train_projected = pca.fit_transform(normalize(train[features], axis=0))
-   
     
-    x_train.insert(1, 'PCAOne', x_train_projected[:, 0])
-    x_train.insert(1, 'PCATwo', x_train_projected[:, 1])
+
+    """Getting the first 2 PCs""" 
+    pca = PCA(n_components=2)
+    x_train_projected = pca.fit_transform(normalize(x_train, axis=0))
+   
+    x_train, del_constants = remove_feat_constants(x_train) 
+    """ removing columns with no 
+    variance; in our case the all-zero columns"""
+    x_train, del_identicals = remove_feat_identicals(x_train)
+    """removing columns that are identical to each other, and retainining
+    only one of them"""
     y_train = df_data["TARGET"]
 
 
@@ -132,4 +130,6 @@ def final_feats(df_data):
 
     X_train_new = x_train.drop(labels=x_train.columns[feat_ix_delete],
                                  axis=1)
-    return X_train_new, y_train, feat_ix_keep, pca, features                             
+    X_train_new.insert(1, 'PCAOne', x_train_projected[:, 0])
+    X_train_new.insert(1, 'PCATwo', x_train_projected[:, 1])
+    return X_train_new, y_train, feat_ix_keep, pca, del_constants, del_identicals                             
